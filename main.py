@@ -73,13 +73,13 @@ def new_game():
     while cls_choice not in ["1", "2", "3"]:
         cls_choice = input("Invalid. Enter 1-3: ")
 
-    # Convert number to class name
+    # Convert number to capitalized class name expected by character_manager
     if cls_choice == "1":
-        character_class = "warrior"
+        character_class = "Warrior"
     elif cls_choice == "2":
-        character_class = "mage"
+        character_class = "Mage"
     else:
-        character_class = "rogue"
+        character_class = "Rogue"
 
     # Try to create the character
     try:
@@ -130,7 +130,7 @@ def load_game():
         print("Save file corrupted.")
 
 
-# ============================================================================ 
+# ============================================================================
 # GAME LOOP FUNCTIONS
 # ============================================================================
 
@@ -179,7 +179,7 @@ def game_menu():
     return int(choice)
 
 
-# ============================================================================ 
+# ============================================================================
 # GAME ACTION FUNCTIONS
 # ============================================================================
 
@@ -188,14 +188,29 @@ def view_character_stats():
     global current_character
 
     print("\n=== CHARACTER STATS ===")
-    character_manager.display_character(current_character)
+    if current_character:
+        print(f"Name: {current_character.get('name')}")
+        print(f"Class: {current_character.get('class')}")
+        print(f"Level: {current_character.get('level')}")
+        print(f"Health: {current_character.get('health')}/{current_character.get('max_health')}")
+        print(f"Strength: {current_character.get('strength')}")
+        print(f"Magic: {current_character.get('magic')}")
+        print(f"Experience: {current_character.get('experience')}")
+        print(f"Gold: {current_character.get('gold')}")
 
     print("\nActive quests:")
-    quest_handler.display_active_quests(current_character, all_quests)
+    active_quests = quest_handler.get_active_quests(current_character, all_quests)
+    if active_quests:
+        quest_handler.display_quest_list(active_quests)
+    else:
+        print("None")
 
     print("\nCompleted quests:")
-    quest_handler.display_completed_quests(current_character, all_quests)
-
+    completed_quests = quest_handler.get_completed_quests(current_character, all_quests)
+    if completed_quests:
+        quest_handler.display_quest_list(completed_quests)
+    else:
+        print("None")
 
 def view_inventory():
     """Display inventory and allow the player to interact with items"""
@@ -252,45 +267,66 @@ def quest_menu():
     """Display quest options and allow the player to manage quests"""
     global current_character, all_quests
 
-    print("\n=== QUEST MENU ===")
-    print("1. View Active Quests")
-    print("2. View Available Quests")
-    print("3. View Completed Quests")
-    print("4. Accept Quest")
-    print("5. Abandon Quest")
-    print("6. Complete Quest (DEBUG)")
-    print("7. Back")
+    while True:
+        print("\n=== QUEST MENU ===")
+        print("1. View Active Quests")
+        print("2. View Available Quests")
+        print("3. View Completed Quests")
+        print("4. Accept Quest")
+        print("5. Abandon Quest")
+        print("6. Complete Quest (DEBUG)")
+        print("7. Back")
 
-    choice = input("Enter choice: ")
+        choice = input("Enter choice (1-7): ")
 
-    # Perform actions based on choice
-    if choice == "1":
-        quest_handler.display_active_quests(current_character, all_quests)
-    elif choice == "2":
-        quest_handler.display_available_quests(current_character, all_quests)
-    elif choice == "3":
-        quest_handler.display_completed_quests(current_character, all_quests)
-    elif choice == "4":
-        q = input("Enter quest ID: ")
-        try:
-            quest_handler.accept_quest(current_character, q, all_quests)
-            print("Quest accepted!")
-        except Exception as e:
-            print("Error:", e)
-    elif choice == "5":
-        q = input("Enter quest ID: ")
-        try:
-            quest_handler.abandon_quest(current_character, q)
-            print("Quest abandoned.")
-        except Exception as e:
-            print("Error:", e)
-    elif choice == "6":
-        q = input("Enter quest ID: ")
-        try:
-            quest_handler.complete_quest(current_character, q, all_quests)
-            print("Quest completed!")
-        except Exception as e:
-            print("Error:", e)
+        # Perform actions based on choice
+        if choice == "1":
+            print("\n--- Active Quests ---")
+            active = quest_handler.get_active_quests(current_character, all_quests)
+            if active:
+                quest_handler.display_quest_list(active)
+            else:
+                print("No active quests.")
+        elif choice == "2":
+            print("\n--- Available Quests ---")
+            available = quest_handler.get_available_quests(current_character, all_quests)
+            if available:
+                quest_handler.display_quest_list(available)
+            else:
+                print("No available quests.")
+        elif choice == "3":
+            print("\n--- Completed Quests ---")
+            completed = quest_handler.get_completed_quests(current_character, all_quests)
+            if completed:
+                quest_handler.display_quest_list(completed)
+            else:
+                print("No completed quests.")
+        elif choice == "4":
+            q = input("Enter quest ID: ")
+            try:
+                quest_handler.accept_quest(current_character, q, all_quests)
+                print("Quest accepted!")
+            except Exception as e:
+                print("Error:", e)
+        elif choice == "5":
+            q = input("Enter quest ID: ")
+            try:
+                quest_handler.abandon_quest(current_character, q)
+                print("Quest abandoned.")
+            except Exception as e:
+                print("Error:", e)
+        elif choice == "6":
+            q = input("Enter quest ID: ")
+            try:
+                rewards = quest_handler.complete_quest(current_character, q, all_quests)
+                character_manager.gain_experience(current_character, rewards['xp'])
+                print(f"Quest completed! Gained {rewards['xp']} XP and {rewards['gold']} Gold.")
+            except Exception as e:
+                print("Error:", e)
+        elif choice == "7":
+            break
+        else:
+            print("Invalid choice. Please enter 1-7.")
 
 
 def explore():
@@ -299,20 +335,19 @@ def explore():
 
     print("\nYou venture into the wilderness...")
 
-    # Generate an enemy based on player's level
-    enemy = combat_system.generate_enemy(current_character["level"])
+    # Get a random enemy appropriate for the player's level
+    enemy = combat_system.get_random_enemy_for_level(current_character["level"])
     print("A wild " + enemy["name"] + " appears!")
 
-    # Start a battle
+    # Start a battle using SimpleBattle and start_battle()
     battle = combat_system.SimpleBattle(current_character, enemy)
-    result = battle.start()
+    result = battle.start_battle()
 
     print(result)
 
-    # Check if character died
-    if result == "defeat":
+    # Check if character died or lost the battle
+    if result.get("winner") == "enemy":
         handle_character_death()
-
 
 def shop():
     """Allow the player to buy and sell items"""
@@ -358,7 +393,7 @@ def shop():
                 print("Error:", e)
 
 
-# ============================================================================ 
+# ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
 
@@ -418,7 +453,7 @@ def display_welcome():
     print("Build your character, complete quests, and become a legend!\n")
 
 
-# ============================================================================ 
+# ============================================================================
 # MAIN EXECUTION
 # ============================================================================
 
@@ -457,4 +492,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

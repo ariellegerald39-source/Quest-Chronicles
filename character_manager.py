@@ -325,6 +325,30 @@ def validate_character_data(character):
             raise InvalidSaveDataError(f"{int_field} must be a number")
 
     return True
+def list_saved_characters(save_directory="data/save_games"):
+    """
+    List all saved character names from the save directory.
+
+    Args:
+        save_directory (str): Folder where save files are stored.
+
+    Returns:
+        list: List of character names found.
+    """
+    if not os.path.exists(save_directory):
+        return []
+
+    saves = []
+    try:
+        for filename in os.listdir(save_directory):
+            if filename.endswith("_save.txt"):
+                # Strip off '_save.txt' to get the character name
+                char_name = filename[:-9]
+                saves.append(char_name)
+    except Exception:
+        return []
+
+    return saves
 
 # ============================================================================
 # TESTING
